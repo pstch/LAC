@@ -15,13 +15,13 @@
 {% block body %}
 
 {% if memberz %}
-<h1> Liste des membres du group {{ group }} : </h1>
+<h1> Liste des membres du groupe {{ group }} : </h1>
 <table id='table1' >
   {% for member in memberz|sort %}
   <tr>
     <td> <a href="{{
             url_for('show_user',
-           page=get_group_from_member_uid(member),
+           page=group,
            uid=member) }}">{{member}}</a> </td>
   </tr>
   {%endfor%}

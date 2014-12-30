@@ -14,7 +14,7 @@ class SearchUserForm(Form):
                                      ('deci','Compte DECI'),
                                      ('sam','Compte S.A.M.'),
                                      ('autre','Compte divers')])
-
+    ip = TextField('Adresse IP (cinesIpClient)')
     user_disabled = BooleanField('Uniquement les comptes inactifs : ')
 
 
@@ -76,40 +76,62 @@ class EditGroupSubmissionForm(Form):
 class SizeQuotaForm(Form):
     value = TextField('Valeur')
     unit = SelectField(u'Unité',
-                       choices=[(1, 'ko'), (1000, 'Mo'), (1000000, 'Go')],
+                       choices=[(1, 'Ko'),
+                                (1000, 'Mo'),
+                                (1000000, 'Go'),
+                                (1000000000, 'Po')],
                        default=1000,
                        coerce=int)
 
 class InodeQuotaForm(Form):
     value = TextField('Valeur')
     unit = SelectField(u'Unité',
-                       choices=[(1000000, 'Million'), (1000000000, 'Milliard')],
-                       default=1000000,
+                       choices=[(1000, 'Millier'),(1000000, 'Million'), (1000000000, 'Milliard')],
+                       default=1000,
                        coerce=int)
 
 
 class EditDefaultQuotaForm(Form):
-    cinesQuotaSizeHard = FormField(SizeQuotaForm)
-    cinesQuotaSizeSoft = FormField(SizeQuotaForm)
-    cinesQuotaInodeHard = FormField(InodeQuotaForm)
-    cinesQuotaInodeSoft = FormField(InodeQuotaForm)
+    cinesQuotaSizeHard = FormField(SizeQuotaForm,
+                                   label=u'Quota taille maximale autorisée avant blocage écriture (cinesQuotaSizeHard)')
+    cinesQuotaSizeSoft = FormField(SizeQuotaForm,
+                                    label=u'Quota taille maximale autorise avant avertissement (cinesQuotaSizeSoft)')
+    cinesQuotaInodeHard = FormField(InodeQuotaForm,
+                                    label=u'Quota nombre inodes maximal autorisé avant blocage écriture (cinesQuotaInodeHard)')
+    cinesQuotaInodeSoft = FormField(InodeQuotaForm,
+                                    label=u'Quota nombre inodes maximal autorisé avant avertissement (cinesQuotaInodeSoft)')
 
 class EditQuotaForm(Form):
-    cinesQuotaSizeHardTemp = FormField(SizeQuotaForm)
-    cinesQuotaSizeSoftTemp = FormField(SizeQuotaForm)
+    cinesQuotaSizeHard = FormField(SizeQuotaForm,
+                                   label=u'Quota taille maximale autorisée avant blocage écriture (cinesQuotaSizeHard)')
+    cinesQuotaSizeSoft = FormField(SizeQuotaForm,
+                                    label=u'Quota taille maximale autorise avant avertissement (cinesQuotaSizeSoft)')
+    cinesQuotaInodeHard = FormField(InodeQuotaForm,
+                                    label=u'Quota nombre inodes maximal autorisé avant blocage écriture (cinesQuotaInodeHard)')
+    cinesQuotaInodeSoft = FormField(InodeQuotaForm,
+                                    label=u'Quota nombre inodes maximal autorisé avant avertissement (cinesQuotaInodeSoft)')
+    cinesQuotaSizeHardTemp = FormField(SizeQuotaForm,
+                                       label=u'Valeur temporaire de quota (taille) maximale avant blocage écriture (cinesQuotaSizeHardTemp)')
+    cinesQuotaSizeSoftTemp = FormField(SizeQuotaForm,
+                                       label=u'Valeur temporaire de quota (taille) maximale avant avertissement (cinesQuotaSizeSoftTemp)')
     cinesQuotaSizeTempExpire = DateField(
-        u'Date d\'expiration pour cinesQuotaSizeSoftTemp')
-    cinesQuotaInodeHardTemp = FormField(InodeQuotaForm)
-    cinesQuotaInodeSoftTemp = FormField(InodeQuotaForm)
+        label=u'Date expiration du quota temporaire (cinesQuotaSizeTempExpire)')
+    cinesQuotaInodeHardTemp = FormField(InodeQuotaForm,
+                                        label=u'Valeur temporaire de quota (nombre inodes) maximale avant blocage ecriture (cinesQuotaInodeHardTemp)')
+    cinesQuotaInodeSoftTemp = FormField(InodeQuotaForm,
+                                        label=u'Valeur temporaire de quota (nombre inodes) maximale avant avertissement (cinesQuotaInodeSoftTemp)')
     cinesQuotaInodeTempExpire = DateField(
-        u'Date d\'expiration pour cinesQuotaInodeSoftTemp')
+        label=u'Date expiration du quota temporaire (cinesQuotaInodeTempExpire)')
 
 class UserzFileForm(Form):
     userz_file = FileField('Fichier contenant les logins utilisateur')
 
+class AddObjectTypeForm(Form):
+    label = TextField(u'\'ou\' associée à ce type d\'objet')
+
 class LDAPObjectTypeForm(Form):
     label = TextField(u'\'ou\' associée à ce type d\'objet')
-    description = TextField(u'Déscription')
+    description = TextField(u'Description')
     ranges = TextField(
         u'Ranges d\'ID associées à ce type (au format "n-p;n-p;...")')
     apply_to = SelectField(u'Appliquée à un',
@@ -117,6 +139,8 @@ class LDAPObjectTypeForm(Form):
                                     ('user', 'Utilisateur')],
                            default='group')
     object_classes = FormField(SelectOCForm)
+    ppolicy = SelectField(u'Ppolicy', choices=[], default='')
+    set_ppolicy = BooleanField(u'Appliquer la ppolicy aux objets déjà créés')
 
 class AddUserForm(Form):
     # display_type = SelectField(u'Type d\'affichage pour le compte')
@@ -124,3 +148,30 @@ class AddUserForm(Form):
     ldap_object_type = SelectField(u'Type d\'objet LDAP', coerce=int)
     uid = TextField(u'Login (uid)')
     cn = TextField(u'Common Name')
+    # home_directory = TextField(u'Repertoire d\'acceuil (homeDirectory)')
+
+
+class AddPolicyForm(Form):
+    cn = TextField(u'Common Name')
+
+class SelectGroupTypeForm(Form):
+    group_type = SelectField(u'Type de groupe')
+
+class AddGenericGroupForm(Form):
+    cn = TextField(u'Nom (cn)')
+    filesystem = SelectField(u'Système de fichier',default='DEFAUT')
+    description = TextField(u'Description')
+
+
+class AddC4GroupForm(Form):
+    cn = SelectField(u'Nom (cn)')
+    filesystem = SelectField(u'Système de fichier',default='DEFAUT')
+    description = TextField(u'Description')
+
+class FilesystemForm(Form):
+    label = TextField(u'Libellé du système de fichiers')
+    description = TextField(u'Description du système de fichiers')
+
+class ShellForm(Form):
+    label = TextField(u'Libellé du shell')
+    path = TextField(u'Emplacement du shell')

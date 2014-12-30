@@ -1,0 +1,131 @@
+{% from "_formhelpers.html" import render_formfield, render_field %}
+{% extends "layout.html" %}
+
+{% block title %} Edition par groupe(s)  {% endblock title %}
+
+{% block head_js %}
+
+
+<script type="text/javascript" src="{{
+         url_for('static', filename='jquery-2.1.1.js')
+         }}"></script>
+
+<script type="text/javascript" src="{{
+         url_for('static', filename='custom_listbox.js')
+         }}"></script>
+
+
+<script type="text/javascript" id="js">
+ $(document).ready(function(){
+   $('#available_groupz').dblclick(function() {
+     selectFromList('#available_groupz', '#selected_groupz');
+   });
+   $('#selected_groupz').dblclick(function() {
+     removeFromList('#available_groupz', '#selected_groupz');
+   });
+   $('#toPage').click(function() {
+     selectFromList('#available_groupz', '#selected_groupz');
+   });
+   $('#toAvailable').click(function(){
+     removeFromList('#available_groupz', '#selected_groupz');
+   });
+   $('#searchGroupzFilter').keyup(function() {
+     var searchArea = $('#available_groupz');
+     // Select Box ID
+     searchFromList($(this).val(), searchArea);
+   });
+   $('#attr_form-available_attr').dblclick(function() {
+     selectFromList('#attr_form-available_attr', '#attr_form-selected_attr');
+   });
+   $('#attr_form-selected_attr').dblclick(function() {
+     removeFromList('#attr_form-available_attr', '#attr_form-selected_attr');
+   });
+   $('#toPage').click(function() {
+     selectFromList('#attr_form-available_attr', '#attr_form-selected_attr');
+   });
+   $('#toAvailable').click(function(){
+     removeFromList('#attr_form-available_attr', '#attr_form-selected_attr');
+   });
+   $('#searchAttrFilter').keyup(function() {
+     var searchArea = $('#attr_form-available_attr');
+     // Select Box ID
+     searchFromList($(this).val(), searchArea);
+   });
+   $('#update').click(function() {
+     $('#selected_groupz option').prop('selected', true);
+     $('#attr_form-selected_attr option').prop('selected', true);
+   });
+ });
+</script>
+
+{% endblock head_js %}
+
+{% block body %}
+
+
+{% if view_form %}
+<div class="well">
+  <form method="post" action="/edit_by_group/" class="col-md-4 col-md-offset-4">
+    <fieldset>
+      <legend>Attributs à modifier :</legend>
+      <input id="searchAttrFilter" type="text"/>
+      {{ render_formfield(view_form.attr_form.available_attr) }}
+      {{ render_formfield(view_form.attr_form.selected_attr) }}
+    </fieldset>
+    <div class="text-center">
+      <button id="update" type="submit"  class="btn btn-primary">
+        <span class="glyphicon glyphicon-arrow-right"> Suivant</span>
+      </button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+{% if group_form %}
+<div class="well">
+  <form method="post" action="/edit_by_group/" class="col-md-4 col-md-offset-4">
+    <fieldset>
+      <legend>Appliquer les modifications aux groupes suivants :</legend>
+      <input id="searchGroupzFilter" type="text"/>
+      {{ render_formfield(group_form.available_groupz) }}
+      {{ render_formfield(group_form.selected_groupz) }}
+    </fieldset>
+    <div class="text-center">
+      <button id="update" type="submit"  class="btn btn-primary">
+        <span class="glyphicon glyphicon-arrow-right"> Suivant</span>
+      </button>
+    </div>
+  </form>
+</div>
+{% endif %}
+{% if edit_form %}
+<div class="row text-right">
+  <a class="btn-sm btn-info" href="{{ url_for('get_backup_file',
+     userz = ','.join(session['edit_by_group_memberz_uid']),
+     attributez = ','.join(attributez)) }}"><span class="glyphicon glyphicon-download-alt"> Récupérer une sauvegarde</span></a>
+</div><br>
+<form method="post" action="/edit_by_group/" class="col-md-5 col-md-offset-3">
+  <div class="well">
+
+    <div {% if not session['admin']  %}style="display: none;"{% endif %}>{{ render_formfield(edit_form.action) }}</div>
+
+    <fieldset>
+      <legend>Attributs à modifier :</legend>
+      {% for field in fieldz %}
+      <dl class="dl-horizontal">
+        <dt>{{ field.label }}</dt>
+        <dd>{{ get_attr(edit_form, field.label) }}</dd>
+      </dl>
+      {{ edit_form.submited }}
+      {% endfor  %}
+    </fieldset>
+    <div class="text-center">
+      <button id="update" type="submit"  class="btn btn-primary">
+        <span class="glyphicon glyphicon-arrow-right"> Suivant</span>
+      </button>
+    </div>
+  </div>
+</form>
+{% endif %}
+
+{% endblock body %}
