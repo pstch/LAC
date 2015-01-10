@@ -524,6 +524,57 @@ def search_user():
                            timestamp=time.strftime("%Y%m%d_%H%M") )
 
 
+@app.route('/search_group', methods=['POST', 'GET'])
+@login_required
+def search_group():
+    """
+    Search for a posixAccount in the entire LDAP tree
+    """
+    form = SearchGroupForm(request.form)
+    search_resultz=""
+    page = Page.query.filter_by(label = "search_group").first()
+    page_attributez = Field.query.filter_by(page_id = page.id, display=True).all()
+    search_attributez = [attr.label.encode('utf-8')
+                         for attr in page_attributez]
+    print("Search attributez : {0}".format(search_attributez))
+
+    if request.method == 'POST' and form.validate():
+        filter_list =[]
+        if form.gid_number.data != "" :
+            filter_list.append("(gidNumber={0})".format(form.gid_number.data))
+        if form.cn.data != "" :
+            filter_list.append("(cn={0})".format(form.cn.data))
+        if form.description.data :
+            filter_list.append(
+                "(description={0})".format(form.description.data)
+            )
+        base_dn = "ou=groupePosix,{0}".format(app.config['LDAP_SEARCH_BASE'])
+
+        if filter_list != [] :
+            ldap_filter = "(&(objectClass=posixGroup){0})".format("".join(
+                filter_list
+            ))
+        else:
+            ldap_filter = "(objectClass=posixGroup)"
+
+        print("Search filter : {0}".format(ldap_filter))
+        print("ROOT_DN : {0}".format(base_dn))
+
+        print(search_attributez)
+        raw_resultz = ldap.search(ldap_filter=ldap_filter,
+                                  attributes=search_attributez,
+                                  base_dn=base_dn)
+
+        print(raw_resultz)
+        search_resultz = ldaphelper.get_search_results(raw_resultz)
+
+    return render_template('search_group.html',
+                           groupz=search_resultz,
+                           form=form,
+                           attributes=page_attributez,
+                           timestamp=time.strftime("%Y%m%d_%H%M") )
+
+
 @app.route('/change_password/<uid>', methods=['POST', 'GET'])
 @login_required
 def change_password(uid):
@@ -618,6 +669,11 @@ def show_user(page, uid):
         return redirect(url_for('home'))
     uid_detailz = ldaphelper.get_search_results(raw_detailz)[0]
     uid_attributez=uid_detailz.get_attributes()
+    if 'cinesIpClient' in uid_attributez:
+        uid_attributez['cinesIpClient'] = [
+            ip for ip in uid_attributez['cinesIpClient'][0].split(";")
+        ]
+    # print(uid_attributez)
     work_groupz = get_work_groupz_from_member_uid(uid)
     sec_groupz = get_posix_groupz_from_member_uid(uid)
     if 'cinesSoumission' in uid_attributez:
@@ -959,11 +1015,14 @@ def hello(name=None):
 
 
 @app.route('/add_user/<page_label>/<uid>', methods=('GET', 'POST'))
-@app.route('/add_user/', methods=('GET', 'POST'))
+@app.route('/add_user/<page_label>', methods=('GET', 'POST'))
+# @app.route('/add_user/', methods=('GET', 'POST'))
 @login_required
-def add_user(page_label=None,uid=None):
+def add_user(page_label, uid=None):
     pages = Page.query.all()
-    ldap_object_types = LDAPObjectType.query.all()
+    ldap_object_type = LDAPObjectType.query.filter_by(
+        label = page_label
+    ).first()
 
     existing_userz = [
         user.get_attributes()['uid'][0] for user in get_all_users()]
@@ -973,22 +1032,8 @@ def add_user(page_label=None,uid=None):
 
     add_form = AddUserForm(request.form)
     add_form.group.choices = get_posix_groupz_choices()
-    add_form.ldap_object_type.choices = [
-        (ldap_object_type.id,
-         ldap_object_type.label)
-        for ldap_object_type in ldap_object_types
-        if ldap_object_type.apply_to == "user"]
-
 
     if request.method == 'POST':
-        if add_form.ldap_object_type.data:
-            page_label = LDAPObjectType.query.filter_by(
-                id = add_form.ldap_object_type.data
-            ).first().label
-        print(page_label)
-        ldap_object_type = LDAPObjectType.query.filter_by(
-            label = page_label
-        ).first()
         page = Page.query.filter_by(
             label = ldap_object_type.label
         ).first()
@@ -998,7 +1043,6 @@ def add_user(page_label=None,uid=None):
         edit_form = EditForm(request.form)
 
         if add_form.uid.data and add_form.validate():
-            print("group from form {0}".format(add_form.ldap_object_type.data))
             set_edit_user_form_values(edit_form,fieldz)
             return render_template('add_user.html',
                                    page=page.label,
@@ -1019,7 +1063,8 @@ def add_user(page_label=None,uid=None):
                                     page=page_label,
                                     uid = uid))
     return render_template('add_user.html',
-                           add_form=add_form)
+                           add_form=add_form,
+                           page=page_label)
 
 @app.route('/edit_user/<page>/<uid>', methods=('GET', 'POST'))
 @login_required
@@ -2210,10 +2255,10 @@ def populate_people_group_redis():
         print(people_group)
         r.delete('groupz:{0}'.format(people_group))
         memberz = get_people_group_memberz(people_group)
-        for member in memberz:
-            r.sadd("groupz:{0}".format(people_group), member)
-
-
+        print("memberz : {0}".format(memberz))
+        if memberz:
+            for member in memberz:
+                r.sadd("groupz:{0}".format(people_group), member)
 
 @app.before_first_request
 def init_populate_work_group_redis():
@@ -2419,10 +2464,14 @@ def update_ldap_object_from_edit_user_form(form, attributes, uid):
         if attr == 'cinesUserToPurge':
             form_values = [entry.data
                            for entry in getattr(form, attr).entries]
+        elif attr == 'cinesIpClient':
+            form_values = [ ';'.join(
+                [entry.data.encode('utf-8')
+                 for entry in getattr(form, attr).entries]
+            )]
         else:
             form_values = [entry.data.encode('utf-8')
                            for entry in getattr(form, attr).entries]
-        # print('form_values : {0}'.format(form_values))
         if attr not in uid_attributez or uid_attributez[attr] != form_values:
             if form_values == [''] or (attr == 'cinesUserToPurge'
                                        and True not in form_values):
@@ -2623,8 +2672,12 @@ def set_edit_user_form_values(form, fieldz, uid=None):
         while(len(form_field.entries)>0):
             form_field.pop_entry()
         if field.label in uid_attributez and len(uid_attributez[field.label]):
+            if field.label == "cinesIpClient":
+                uid_attributez[field.label] = [
+                    ip_address
+                    for ip_address in uid_attributez[field.label][0].split(";")
+                ]
             for field_value in uid_attributez[field.label]:
-                print(field_value)
                 form_field.append_entry(
                     convert_to_display_mode(field_value,
                                             field.fieldtype.type))
@@ -3075,6 +3128,10 @@ def  get_branch_from_posix_group_dn(dn):
         return m.group(2)
     else:
         return ''
+app.jinja_env.globals.update(
+    get_branch_from_posix_group_dn=get_branch_from_posix_group_dn
+)
+
 
 def get_work_groupz_from_member_uid(uid):
     dn = ldap.get_full_dn_from_uid(uid)
